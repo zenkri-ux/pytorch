@@ -56,7 +56,7 @@ def do_input_map(fn, input):
 def clear_class_registry():
     torch._C._jit_clear_class_registry()
     torch.jit._recursive.concrete_type_store = torch.jit._recursive.ConcreteTypeStore()
-    torch.jit._state._script_classes.clear()
+    torch.jit._state._clear_script_classes()
 
 def get_execution_plan(graph_executor_state):
     execution_plans = list(graph_executor_state.execution_plans.values())
@@ -690,4 +690,7 @@ def warmup_backward(f, *args):
 # TODO: Remove me once https://bugs.python.org/issue42666 is resolved
 def make_global(*args):
     for arg in args:
+        if isinstance(arg, torch.jit._script.ScriptClassWrapper):
+            arg = arg.get_wrapped_class()
+
         setattr(sys.modules[arg.__module__], arg.__name__, arg)

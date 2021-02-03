@@ -3833,7 +3833,6 @@ def foo(x):
                 a += SomeNonAddableClass()
                 return a
 
-        @torch.jit.script
         class SomeClass(object):
             def __init__(self):
                 self.num = 99
@@ -3847,7 +3846,6 @@ def foo(x):
                 # type: (SomeClass) -> bool
                 return self.num == other.num
 
-        @torch.jit.script
         class SomeOutOfPlaceClass(object):
             def __init__(self):
                 self.num = 99
@@ -3881,6 +3879,8 @@ def foo(x):
             assert d is d_copy
             return a, b, c, d
 
+        _ = torch.jit.script(SomeClass)
+        _ = torch.jit.script(SomeOutOfPlaceClass)
         self.checkScript(fn2, [])
 
     def test_nested_list_construct(self):
@@ -15017,7 +15017,6 @@ dedent """
 
         self.checkModule(HasAttrMod(), ())
 
-        @torch.jit.script
         class FooTest(object):
             def __init__(self):
                 self.x = 1
@@ -15031,6 +15030,7 @@ dedent """
             val2 = hasattr(FooTest, "foo"), hasattr(FooTest, "a")
             return val1, val2
 
+        _ = torch.jit.script(FooTest)
         self.assertEqual(foo(), torch.jit.script(foo)())
 
     def test_optional_tuple(self):
