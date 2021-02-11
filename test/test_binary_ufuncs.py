@@ -290,7 +290,7 @@ class TestBinaryUfuncs(TestCase):
             # floor(a / b) * b can be < a, so fixup slightly to avoid underflow
             a = torch.where(a < 0, a + b, a)
 
-        d_true = torch.divide(a, b)
+        d_true = torch.divide(a, b, rounding_mode=None)
         self.assertTrue(d_true.is_floating_point())
         self.assertEqual(d_true * b, a.to(d_true.dtype))
 
@@ -339,9 +339,8 @@ class TestBinaryUfuncs(TestCase):
         storage[1::2, 1::2] = b
 
         for rounding_mode in (None, "trunc", "floor"):
-            kwargs = dict(rounding_mode=rounding_mode) if rounding_mode is not None else {}
-            expect = torch.divide(storage[::2, ::2], storage[1::2, 1::2], **kwargs)
-            actual = torch.divide(a, b, **kwargs)
+            expect = torch.divide(storage[::2, ::2], storage[1::2, 1::2], rounding_mode=rounding_mode)
+            actual = torch.divide(a, b, rounding_mode=rounding_mode)
             self.assertEqual(actual, expect)
 
     @dtypes(*torch.testing.get_all_dtypes(
