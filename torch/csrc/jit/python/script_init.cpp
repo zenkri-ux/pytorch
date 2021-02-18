@@ -17,6 +17,7 @@
 #include <torch/csrc/jit/ir/constants.h>
 #include <torch/csrc/jit/ir/irparser.h>
 #include <torch/csrc/jit/passes/inliner.h>
+#include <torch/csrc/jit/python/module_python.h>
 #include <torch/csrc/jit/python/pybind_utils.h>
 #include <torch/csrc/jit/python/python_tracer.h>
 #include <torch/csrc/jit/runtime/graph_executor.h>
@@ -805,6 +806,8 @@ void initJitScriptBindings(PyObject* module) {
                   return method.name();
                 });
               })
+          .def(
+              "_properties", [](Object& self) { return self.get_properties(); })
           .def("__copy__", &Object::copy)
           .def(
               "__hash__",

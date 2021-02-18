@@ -346,6 +346,15 @@ inline InferredType tryToInferType(py::handle input) {
     }
   }
 
+  auto is_script_object_wrapper = py::module::import("torch.jit._recursive")
+                                      .attr("is_script_object_wrapper")(input);
+  if (py::cast<bool>(is_script_object_wrapper)) {
+    auto object = py::module::import("torch.jit._recursive")
+                      .attr("unwrap_script_object")(input);
+    auto cpp_instance = py::cast<Object>(object);
+    return InferredType(cpp_instance.type());
+  }
+
   if (py::isinstance<Object>(input)) {
     auto object = py::cast<Object>(input);
     return InferredType(object.type());
@@ -718,8 +727,10 @@ inline py::object toPyObject(IValue ivalue) {
 
     auto pyCu = get_python_cu();
     if (obj->name().find("__torch__.torch.classes") == 0) {
-      return py::cast(Object(obj));
+      return py::module::import("torch.jit._recursive")
+          .attr("wrap_script_object")(py::cast(Object(obj)));
     }
+
     const auto classType = pyCu->get_class(c10::QualifiedName(obj->name()));
     AT_ASSERT(classType);
     auto pyClass = getScriptedClassOrError(obj->name());
