@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.4.1)
-project(pytorch_jni CXX)
+option(BUILD_LITE_INTERPRETER "Master flag to build pytorch_jni_lite" OFF)
+message(STATUS "BUILD_LITE_INTERPRETER (pytorch_jni_lite): ${BUILD_LITE_INTERPRETER}")
+
+if(BUILD_LITE_INTERPRETER)
+  project(pytorch_jni_lite CXX)
+else()
+  project(pytorch_jni CXX)
+endif()
 
 include(GNUInstallDirs)
 
@@ -45,15 +52,26 @@ configure_file(
     ${pytorch_android_DIR}/cmake_macros.h.in
     ${pytorch_android_DIR}/cmake_macros.h)
 
-file(GLOB pytorch_android_SOURCES
-  ${pytorch_android_DIR}/pytorch_jni_jit.cpp
-  ${pytorch_android_DIR}/pytorch_jni_common.cpp
-  ${pytorch_android_DIR}/pytorch_jni_common.h
-)
 
-add_library(pytorch_jni SHARED
-    ${pytorch_android_SOURCES}
-)
+if(BUILD_LITE_INTERPRETER)
+  file(GLOB pytorch_android_SOURCES
+    ${pytorch_android_DIR}/pytorch_jni_lite.cpp
+    ${pytorch_android_DIR}/pytorch_jni_common.cpp
+    ${pytorch_android_DIR}/pytorch_jni_common.h
+  )
+  add_library(pytorch_jni_lite SHARED
+      ${pytorch_android_SOURCES}
+  )
+else()
+  file(GLOB pytorch_android_SOURCES
+    ${pytorch_android_DIR}/pytorch_jni_jit.cpp
+    ${pytorch_android_DIR}/pytorch_jni_common.cpp
+    ${pytorch_android_DIR}/pytorch_jni_common.h
+  )
+  add_library(pytorch_jni SHARED
+      ${pytorch_android_SOURCES}
+  )
+endif()
 
 if(APPLE)
   # Need to add rpath so dlopen can find dependencies.
@@ -63,13 +81,22 @@ if(APPLE)
         $<TARGET_FILE:pytorch_jni>)
 endif()
 
-target_compile_options(pytorch_jni PRIVATE
-  -fexceptions
+if(BUILD_LITE_INTERPRETER)
+  target_compile_options(pytorch_jni_lite PRIVATE
+    -fexceptions
+  )
+  target_include_directories(pytorch_jni_lite BEFORE
+  PUBLIC $<BUILD_INTERFACE:${libtorch_include_DIR}>
 )
+else()
+  target_compile_options(pytorch_jni PRIVATE
+    -fexceptions
+  )
+  target_include_directories(pytorch_jni BEFORE
+  PUBLIC $<BUILD_INTERFACE:${libtorch_include_DIR}>
+)
+endif()
 
-target_include_directories(pytorch_jni BEFORE
-   PUBLIC $<BUILD_INTERFACE:${libtorch_include_DIR}>
-)
 
 set(fbjni_DIR ${CMAKE_CURRENT_LIST_DIR}/../libs/fbjni/)
 set(fbjni_BUILD_DIR ${CMAKE_BINARY_DIR}/fbjni/${BUILD_SUBDIR})
@@ -153,14 +180,27 @@ if(USE_VULKAN)
   list(APPEND pytorch_jni_LIBS ${Vulkan_LIBS})
 endif()
 
-target_link_libraries(pytorch_jni ${pytorch_jni_LIBS})
+if(BUILD_LITE_INTERPRETER)
+  target_link_libraries(pytorch_jni_lite ${pytorch_jni_LIBS})
 
-install(TARGETS pytorch_jni
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}) #For windows
+  install(TARGETS pytorch_jni_lite
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}) #For windows
+else()
+  target_link_libraries(pytorch_jni ${pytorch_jni_LIBS})
+
+  install(TARGETS pytorch_jni
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}) #For windows
+endif()
 
 if(MSVC)
   install(FILES $<TARGET_PDB_FILE:pytorch_jni> DESTINATION ${CMAKE_INSTALL_LIBDIR} OPTIONAL)
-  install(TARGETS pytorch_jni DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  if(BUILD_LITE_INTERPRETER)
+    install(TARGETS pytorch_jni_lite DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  else()
+    install(TARGETS pytorch_jni DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  endif()
 endif()
