@@ -3,6 +3,7 @@ import torch
 import importlib
 from torch.package._custom_import_pickler import create_custom_import_pickler
 from torch.package.package_importer import _UnpicklerWrapper
+from torch.package.importer import sys_importer, OrderedImporter
 from torch.package import PackageImporter
 from torch.serialization import _maybe_decode_ascii
 from typing import Callable
@@ -28,9 +29,9 @@ def _save_storages(importer, obj):
     data_buf = io.BytesIO()
     importer = importer if isinstance(importer, torch.package.PackageImporter) else None
     if importer is not None:
-        importers = [importer.import_module, importlib.import_module]
+        importers = OrderedImporter(importer, sys_importer)
     else:
-        importers = [importlib.import_module]
+        importers = sys_importer
     pickler = create_custom_import_pickler(data_buf, importers)
     pickler.persistent_id = persistent_id
     pickler.dump(obj)
